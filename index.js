@@ -27,11 +27,10 @@ client.once('ready', async () => {
     ig = new IgApiClient();
     ig.state.generateDevice(username);
     await ig.account.login('INSTAGRAM_USERNAME', 'INSTAGRAM_PASSWORD');
-
+    const user = await ig.user.searchExact(username);
+    const userid = user.pk;
     const monitor = async () => {
         try {
-            const user = await ig.user.searchExact(username);
-            const userid = user.pk;
 
             const feed = await ig.feed.user(userid).items();
             const newposts = feed.filter(item => !sentpostids.has(item.id));
