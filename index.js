@@ -62,28 +62,36 @@ client.once('ready', async () => {
                 fs.writeFileSync('posts.txt', postdata);
             }
 
-            const userstories = await ig.feed.userStory(userid);
-            if (Array.isArray(userstories.items)) {
-                const newstories = [];
-                for (let i = 0; i < userstories.items.length; i++) {
-                    const story = userstories.items[i];
-                    if (!sentstoryids.has(story.id)) {
-                        newstories.push(story);
+            const reelsfeed = ig.feed.reelsMedia({
+                userIds: [userid],
+            });
+            const storyitems = await reelsfeed.items();
+
+            if (storyitems.length > 0) {
+                const channel = await client.channels.fetch(channelid);
+                const newstories = storyitems.filter(story => !sentstoryids.has(story.id));
+
+                for (const story of newstories) {
+                    if (story.items && Array.isArray(story.items)) {
+                        const storyMediaUrls = story.items.map(item => {
+                            if (item.media_type === 2) {
+                                return item.video_versions[0].url;
+                            } else {
+                                return item.image_versions2.candidates[0].url;
+                            }
+                        });
+
+                        for (const mediaUrl of storyMediaUrls) {
+                            console.log(mediaUrl)
+                            await channel.send(`${username}'s story: ${mediaUrl}`);
+                        }
                     }
+
+                    sentstoryids.add(story.id);
                 }
 
-                if (newstories.length > 0) {
-                    const channel = await client.channels.fetch(channelid);
-                    for (const story of newstories) {
-                        const mediaUrl = story.items[0].media_type === 2 ?
-                            story.items[0].video_versions[0].url :
-                            story.items[0].image_versions2.candidates[0].url;
-                        await channel.send(`${username}'s story; ${mediaUrl}`);
-                        sentstoryids.add(story.id);
-                    }
-                    const storydata = Array.from(sentstoryids).join('\n');
-                    fs.writeFileSync('stories.txt', storydata);
-                }
+                const storydata = Array.from(sentstoryids).join('\n');
+                fs.writeFileSync('stories.txt', storydata);
             }
         } catch (err) {
             console.error('error:', err);
